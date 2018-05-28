@@ -27,6 +27,7 @@ typedef struct Terminal{
     const char* prefix;
     size_t size;
     size_t curpos;
+    size_t allocated_size;
     uint8_t escseen;
     uint8_t run;
     Keyword *keywords;

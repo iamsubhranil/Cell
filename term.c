@@ -172,7 +172,16 @@ void terminal_repl(Terminal *t){
             else if(t->c == KB_ARW_DWN){}
         }
         else{
-            t->line = (char *)realloc(t->line, sizeof(char) * (t->size + 1));
+            if(t->allocated_size == 0){ 
+                t->line = (char *)realloc(t->line, 2);
+                t->allocated_size = 2;
+                t->line[1] = '\0';
+            }
+            else if(t->allocated_size < (t->size + 2)){
+                t->allocated_size++;
+                t->line = (char *)realloc(t->line, (t->allocated_size));
+                t->line[t->allocated_size - 1] = '\0';
+            }
             for(siz i = t->size;i > t->curpos;i--)
                 t->line[i] = t->line[i - 1];
             t->line[t->curpos] = t->c;
@@ -203,6 +212,7 @@ Terminal terminal_init(const char *prefix){
     t.run = 1;
     t.size = 0;
     t.c_lflag_bak = 0;
+    t.allocated_size = 0;
     return t;
 }
 
