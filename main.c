@@ -14,6 +14,7 @@ static void exit_action(StringParts parts, Terminal *t){
     (void)t;
     info("Exiting..\n");
     t->run = 0;
+    parts_free(parts);
 }
 
 static Keyword keywords[] = {
@@ -50,6 +51,7 @@ void nested_term_action(StringParts parts, Terminal *t1){
     terminal_add_keyword(&t, "nest", ANSI_COLOR_YELLOW, nested_term_action);
     terminal_repl(&t);
     terminal_destroy(&t);
+    parts_free(parts);
 }
 
 int main(){
