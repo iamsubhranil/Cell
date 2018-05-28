@@ -65,14 +65,14 @@ static void noecho_off(Terminal *term){
     tcsetattr(0, TCSANOW, &t);
 }
 
-static Keyword keyword_match(const char* line, Terminal *t){
+static Keyword* keyword_match(const char* line, Terminal *t){
     //StringParts sp = string_split(&line[pos], ' ', strlen(line));
     //dbg("Searching %s\n", sp.parts[0]);
     for(siz i = 0;i < t->keyword_count;i++){
         if(strcmp(line, t->keywords[i].keyword) == 0)
-            return t->keywords[i];
+            return &t->keywords[i];
     }
-    return (Keyword){NULL, NULL, NULL};
+    return NULL;
 }
 
 static void highlight_and_print(Terminal *t, siz max){
@@ -82,9 +82,9 @@ static void highlight_and_print(Terminal *t, siz max){
     for(siz i = 0;i < part.part_count && printed < max;i++){
         //u8 space_printed = 0;
         if(part.parts[i][0] != '\0'){
-            Keyword keyword = keyword_match(part.parts[i], t);
-            if(keyword.color != NULL){
-                printf("%s", keyword.color);
+            Keyword* keyword = keyword_match(part.parts[i], t);
+            if(keyword != NULL){
+                printf("%s", keyword->color);
             }
             for(siz j = 0;printed<max && part.parts[i][j] != '\0';j++,printed++)
                 putchar(part.parts[i][j]);
@@ -217,6 +217,12 @@ Terminal terminal_init(const char *prefix){
 }
 
 void terminal_add_keyword(Terminal *t, const char *keyword, const char *color, term_action action){
+    Keyword *k = keyword_match(keyword, t);
+    if(k != NULL){
+        k->color = color;
+        k->action = action;
+        return;
+    }
     t->keywords = (Keyword *)realloc(t->keywords, sizeof(Keyword) * ++t->keyword_count);
     t->keywords[t->keyword_count - 1].keyword = keyword;
     t->keywords[t->keyword_count - 1].color = color;
