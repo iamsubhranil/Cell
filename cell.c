@@ -4,8 +4,8 @@
 #include <termios.h>
 #include <string.h>
 
-#include "display.h"
-#include "term.h"
+//#include "display.h"
+#include "cell.h"
 
 typedef size_t siz;
 #define Psiz "zd"
@@ -21,14 +21,14 @@ typedef uint8_t u8;
 #define KB_ESC 27
 #define KB_SQB_OPN 91
 
-void parts_free(StringParts s){
+void cell_stringparts_free(CellStringParts s){
     for(siz i = 0;i < s.part_count;i++)
         free(s.parts[i]);
     free(s.parts);
 }
 
-static StringParts string_split(const char *str, char c, siz max){
-    StringParts sp;
+static CellStringParts string_split(const char *str, char c, siz max){
+    CellStringParts sp;
     sp.part_count = 0;
     sp.parts = NULL;
     siz s = 0;
@@ -50,7 +50,7 @@ static StringParts string_split(const char *str, char c, siz max){
     return sp;
 }
 
-static void noecho(Terminal *term){
+static void noecho(Cell *term){
     struct termios t;
     tcgetattr(0, &t);
     term->c_lflag_bak = t.c_lflag;
@@ -58,15 +58,15 @@ static void noecho(Terminal *term){
     tcsetattr(0, TCSANOW, &t);
 }
 
-static void noecho_off(Terminal *term){
+static void noecho_off(Cell *term){
     struct termios t;
     tcgetattr(0, &t);
     t.c_lflag = term->c_lflag_bak;
     tcsetattr(0, TCSANOW, &t);
 }
 
-static Keyword* keyword_match(const char* line, Terminal *t){
-    //StringParts sp = string_split(&line[pos], ' ', strlen(line));
+static CellKeyword* keyword_match(const char* line, Cell *t){
+    //CellStringParts sp = string_split(&line[pos], ' ', strlen(line));
     //dbg("Searching %s\n", sp.parts[0]);
     for(siz i = 0;i < t->keyword_count;i++){
         if(strcmp(line, t->keywords[i].keyword) == 0)
@@ -75,14 +75,14 @@ static Keyword* keyword_match(const char* line, Terminal *t){
     return NULL;
 }
 
-static void highlight_and_print(Terminal *t, siz max){
+static void highlight_and_print(Cell *t, siz max){
     printf("\r%s ", t->prefix);
     siz printed = 0;
-    StringParts part = string_split(t->line, ' ', strlen(t->line));
+    CellStringParts part = string_split(t->line, ' ', strlen(t->line));
     for(siz i = 0;i < part.part_count && printed < max;i++){
         //u8 space_printed = 0;
         if(part.parts[i][0] != '\0'){
-            Keyword* keyword = keyword_match(part.parts[i], t);
+            CellKeyword* keyword = keyword_match(part.parts[i], t);
             if(keyword != NULL){
                 printf("%s", keyword->color);
             }
@@ -93,7 +93,7 @@ static void highlight_and_print(Terminal *t, siz max){
         if(printed < max)
             putchar(' '), printed++;
     }
-    parts_free(part);
+    cell_stringparts_free(part);
 }
 
 static void line_clear(const char *prefix, siz size){
@@ -102,19 +102,19 @@ static void line_clear(const char *prefix, siz size){
         printf(" ");
 }
 
-static void execute_statement(Terminal *t){
-    StringParts sp = string_split(t->line, ' ', t->size);
+static void execute_statement(Cell *t){
+    CellStringParts sp = string_split(t->line, ' ', t->size);
     for(siz i = 0;i < t->keyword_count;i++){
         if(strcmp(sp.parts[0], t->keywords[i].keyword) == 0){
             t->keywords[i].action(sp, t);
             return;
         }
     }
-    err("No such action : %s", sp.parts[0]);
-    parts_free(sp);
+    printf(ANSI_COLOR_RED ANSI_FONT_BOLD "\n[Error]" ANSI_COLOR_RESET " No such action : %s", sp.parts[0]);
+    cell_stringparts_free(sp);
 }
 
-void terminal_repl(Terminal *t){
+void cell_repl(Cell *t){
     noecho(t);
     printf("\n%s ", t->prefix);
     //char *line = NULL, c;
@@ -200,8 +200,8 @@ void terminal_repl(Terminal *t){
     noecho_off(t);
 }
 
-Terminal terminal_init(const char *prefix){
-    Terminal t;
+Cell cell_init(const char *prefix){
+    Cell t;
     t.c = 0;
     t.curpos = 0;
     t.escseen = 0;
@@ -216,19 +216,19 @@ Terminal terminal_init(const char *prefix){
     return t;
 }
 
-void terminal_add_keyword(Terminal *t, const char *keyword, const char *color, term_action action){
-    Keyword *k = keyword_match(keyword, t);
+void cell_add_keyword(Cell *t, const char *keyword, const char *color, cell_action action){
+    CellKeyword *k = keyword_match(keyword, t);
     if(k != NULL){
         k->color = color;
         k->action = action;
         return;
     }
-    t->keywords = (Keyword *)realloc(t->keywords, sizeof(Keyword) * ++t->keyword_count);
+    t->keywords = (CellKeyword *)realloc(t->keywords, sizeof(CellKeyword) * ++t->keyword_count);
     t->keywords[t->keyword_count - 1].keyword = keyword;
     t->keywords[t->keyword_count - 1].color = color;
     t->keywords[t->keyword_count - 1].action = action;
 }
 
-void terminal_destroy(Terminal *t){
+void cell_destroy(Cell *t){
     free(t->keywords);
 }
